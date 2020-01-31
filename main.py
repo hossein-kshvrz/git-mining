@@ -1,3 +1,4 @@
+import re
 from os.path import join, dirname
 import pandas as pd
 import requests
@@ -20,24 +21,29 @@ class Miner:
         ids = []
         messages = []
         for issue in self.issue_keys:
-            response = requests.get(self.base_url+issue, headers=headers)
+            response = requests.get(self.base_url + issue, headers=headers)
             response_dict = json.loads(response.text)
-            print(response_dict)
             commits = response_dict.get('items')
             for commit in commits:
                 if not self.remove_modify_commit(commit):
                     keys.append(issue)
                     ids.append(commit.get('sha'))
                     messages.append(commit.get('commit').get('message'))
+                    print('for', issue, ' commit', commit.get('sha'), ' added.')
         commit_df = pd.DataFrame({'Issue key': keys,
-                                  'sha': ids,
-                                  'message': messages})
+                                  'SHA': ids,
+                                  'Message': messages})
         df = commit_df.join(self.df.set_index('Issue key'), on='Issue key')
         return df
 
     @staticmethod
     def remove_modify_commit(commit):
-        pass
+        headers = {'content-type': 'application/json',
+                   'accept': 'application/vnd.github.v3.diff'}
+        url = commit.get('url')
+        response = requests.get(url, headers=headers)
+        p = re.compile('\n-[a-zA-Z0-9_ ]')
+        return bool(p.search(response.text))
 
 
 if __name__ == '__main__':
