@@ -1,4 +1,5 @@
 import re
+import time
 from os.path import join, dirname
 import pandas as pd
 import requests
@@ -21,7 +22,15 @@ class Miner:
         ids = []
         messages = []
         for issue in self.issue_keys:
-            response = requests.get(self.base_url + issue, headers=headers)
+            print(issue)
+            with open(join(path, 'auth.conf'), 'r') as file:
+                lines = file.readlines()
+            username = lines[0].split('\n')[0]
+            password = lines[1].split('\n')[0]
+            session = requests.Session()
+            session.auth = (username, password)
+            response = session.get(self.base_url + issue, headers=headers)
+            time.sleep(2)
             response_dict = json.loads(response.text)
             commits = response_dict.get('items')
             for commit in commits:
@@ -29,7 +38,11 @@ class Miner:
                     keys.append(issue)
                     ids.append(commit.get('sha'))
                     messages.append(commit.get('commit').get('message'))
-                    print('for', issue, ' commit', commit.get('sha'), ' added.')
+                    with open(join(path, 'issue_commit.txt'), 'a') as file:
+                        file.write(str(keys[-1]) + ', ' +
+                                   str(ids[-1]) + ', ' +
+                                   str(messages[-1]) + '\n')
+                    print('\tfor', issue, ' commit', commit.get('sha'), ' added.')
         commit_df = pd.DataFrame({'Issue key': keys,
                                   'SHA': ids,
                                   'Message': messages})
@@ -41,8 +54,15 @@ class Miner:
         headers = {'content-type': 'application/json',
                    'accept': 'application/vnd.github.v3.diff'}
         url = commit.get('url')
-        response = requests.get(url, headers=headers)
-        p = re.compile('\n-[a-zA-Z0-9_ ]')
+        with open(join(path, 'auth.conf'), 'r') as file:
+            lines = file.readlines()
+        username = lines[0].split('\n')[0]
+        password = lines[1].split('\n')[0]
+        session = requests.Session()
+        session.auth = (username, password)
+        response = session.get(url, headers=headers)
+        time.sleep(2)
+        p = re.compile('\n-[a-zA-Z0-9_ \t]')
         return bool(p.search(response.text))
 
 
