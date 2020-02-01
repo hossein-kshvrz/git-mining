@@ -2,5 +2,5 @@
 .ipynb_checkpoints
 venv
 auth.conf
-issue_commit.txt
-issue_commit.csv
+*.txt
+*.csv
